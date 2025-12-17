@@ -2,3 +2,5 @@
 # ------------------------------------------------------------------------------
 USE_DOCKER=yes
 IPYTHONDIR=/app/.ipython
+GEMINI_API_KEY=AIzaSyAuLG9ctmoe272DDOKWFg6wZaZUgzPbr4g
+GEMINI_MODEL_NAME="gemini-2.5-flash"

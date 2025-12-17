@@ -2,6 +2,7 @@
 """Base settings to build other settings files upon."""
 
 
+import pdb
 from pathlib import Path
 
 import environ
@@ -12,10 +13,10 @@ APPS_DIR = BASE_DIR / "logos"
 env = environ.Env()
 
 READ_DOT_ENV_FILE = env.bool("DJANGO_READ_DOT_ENV_FILE", default=False)
-if READ_DOT_ENV_FILE:
-    # OS environment variables take precedence over variables from .env
-    env.read_env(str(BASE_DIR / ".env"))
+# if READ_DOT_ENV_FILE:
+#     # OS environment variables take precedence over variables from .env
 
+env.read_env(str(BASE_DIR / ".env"))
 # GENERAL
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#debug
@@ -293,3 +294,5 @@ SOCIALACCOUNT_FORMS = {"signup": "logos.users.forms.UserSocialSignupForm"}
 
 # Your stuff...
 # ------------------------------------------------------------------------------
+GEMINI_API_KEY = env("GEMINI_API_KEY", default="")
+GEMINI_MODEL_NAME = env("GEMINI_MODEL_NAME", default="gemini-1.5-pro")

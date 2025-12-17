@@ -179,4 +179,6 @@ dependencies = [
     "redis==7.1.0",
     "whitenoise==6.11.0",
     "django-ckeditor==6.7.1",
+    "beautifulsoup4==4.12.3",
+    "requests==2.32.3",
 ]
