@@ -178,4 +178,5 @@ dependencies = [
     "python-slugify==8.0.4",
     "redis==7.1.0",
     "whitenoise==6.11.0",
+    "django-ckeditor==6.7.1",
 ]

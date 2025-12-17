@@ -1,11 +1,30 @@
+from django import forms
 from django.contrib import admin
 from django.utils import timezone
+from ckeditor.widgets import CKEditorWidget
 
 from .models import DailyReading, GospelMeditation, LiturgicalDay
 
 
-class DailyReadingInline(admin.TabularInline):
+class DailyReadingAdminForm(forms.ModelForm):
+    text = forms.CharField(widget=CKEditorWidget())
+
+    class Meta:
+        model = DailyReading
+        fields = "__all__"
+
+
+class GospelMeditationAdminForm(forms.ModelForm):
+    body = forms.CharField(widget=CKEditorWidget())
+
+    class Meta:
+        model = GospelMeditation
+        fields = "__all__"
+
+
+class DailyReadingInline(admin.StackedInline):
     model = DailyReading
+    form = DailyReadingAdminForm
     extra = 1
     fields = (
         "language_code",
@@ -45,6 +64,7 @@ class LiturgicalDayAdmin(admin.ModelAdmin):
 
 @admin.register(DailyReading)
 class DailyReadingAdmin(admin.ModelAdmin):
+    form = DailyReadingAdminForm
     list_display = (
         "day",
         "language_code",
@@ -68,6 +88,7 @@ class DailyReadingAdmin(admin.ModelAdmin):
 
 @admin.register(GospelMeditation)
 class GospelMeditationAdmin(admin.ModelAdmin):
+    form = GospelMeditationAdminForm
     list_display = (
         "day",
         "language_code",
