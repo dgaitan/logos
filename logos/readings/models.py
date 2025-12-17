@@ -1,3 +1,198 @@
+from django.conf import settings
 from django.db import models
 
-# Create your models here.
+
+class LiturgicalDay(models.Model):
+    class LiturgicalYear(models.TextChoices):
+        A = "A", "Year A"
+        B = "B", "Year B"
+        C = "C", "Year C"
+
+    class Season(models.TextChoices):
+        ADVENT = "advent", "Advent"
+        CHRISTMAS = "christmas", "Christmas"
+        LENT = "lent", "Lent"
+        EASTER = "easter", "Easter"
+        ORDINARY = "ordinary", "Ordinary Time"
+        OTHER = "other", "Other"
+
+    class Rank(models.TextChoices):
+        WEEKDAY = "weekday", "Weekday"
+        SUNDAY = "sunday", "Sunday"
+        FEAST = "feast", "Feast"
+        MEMORIAL = "memorial", "Memorial"
+        OPTIONAL_MEMORIAL = "optional_memorial", "Optional Memorial"
+        SOLEMNITY = "solemnity", "Solemnity"
+
+    date = models.DateField(unique=True)
+    liturgical_year = models.CharField(
+        max_length=1,
+        choices=LiturgicalYear.choices,
+        blank=True,
+        help_text="Liturgical cycle for the readings (A/B/C).",
+    )
+    season = models.CharField(
+        max_length=20,
+        choices=Season.choices,
+        blank=True,
+        help_text="Liturgical season for this date.",
+    )
+    rank = models.CharField(
+        max_length=20,
+        choices=Rank.choices,
+        blank=True,
+        help_text="Liturgical rank (Sunday, solemnity, feast, etc.).",
+    )
+    is_holy_day_of_obligation = models.BooleanField(
+        default=False,
+        help_text="Indicates if this date is a holy day of obligation in the selected calendar.",
+    )
+
+    class Meta:
+        ordering = ("date",)
+        verbose_name = "Liturgical day"
+        verbose_name_plural = "Liturgical days"
+
+    def __str__(self) -> str:
+        return self.date.isoformat()
+
+
+class DailyReading(models.Model):
+    class ReadingType(models.TextChoices):
+        FIRST_READING = "first_reading", "First reading"
+        RESPONSORIAL_PSALM = "responsorial_psalm", "Responsorial psalm"
+        SECOND_READING = "second_reading", "Second reading"
+        GOSPEL_ACCLAMATION = "gospel_acclamation", "Gospel acclamation"
+        GOSPEL = "gospel", "Gospel"
+        OTHER = "other", "Other"
+
+    day = models.ForeignKey(
+        LiturgicalDay,
+        related_name="readings",
+        on_delete=models.CASCADE,
+    )
+    language_code = models.CharField(
+        max_length=10,
+        choices=settings.LANGUAGES,
+        help_text="Language of this reading.",
+    )
+    reading_type = models.CharField(
+        max_length=32,
+        choices=ReadingType.choices,
+        help_text="Type of reading (gospel, psalm, etc.).",
+    )
+    order = models.PositiveSmallIntegerField(
+        default=1,
+        help_text="Order of the reading when there are multiple of the same type.",
+    )
+    title = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Optional heading/title for display.",
+    )
+    reference = models.CharField(
+        max_length=255,
+        help_text='Scripture reference, e.g. "Jn 3,16-18".',
+    )
+    psalm_response = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Used for the responsorial psalm refrain (R/.).",
+    )
+    text = models.TextField(
+        help_text="Full text of the reading in the selected language.",
+    )
+
+    class Meta:
+        ordering = ("day", "language_code", "reading_type", "order")
+        verbose_name = "Daily reading"
+        verbose_name_plural = "Daily readings"
+        constraints = [
+            models.UniqueConstraint(
+                fields=("day", "language_code", "reading_type", "order"),
+                name="unique_reading_per_day_language_type_order",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        reading_label = self.get_reading_type_display()
+        return f"{self.day.date.isoformat()} - {reading_label} [{self.language_code}]"
+
+
+class GospelMeditation(models.Model):
+    class Source(models.TextChoices):
+        AI = "ai", "AI generated"
+        HUMAN = "human", "Human written"
+        OTHER = "other", "Other"
+
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Draft"
+        PENDING = "pending", "Pending review"
+        APPROVED = "approved", "Approved"
+        REJECTED = "rejected", "Rejected"
+
+    day = models.ForeignKey(
+        LiturgicalDay,
+        related_name="meditations",
+        on_delete=models.CASCADE,
+    )
+    language_code = models.CharField(
+        max_length=10,
+        choices=settings.LANGUAGES,
+        help_text="Language of this meditation.",
+    )
+    title = models.CharField(max_length=255)
+    body = models.TextField(
+        help_text="Full meditation text for the daily gospel.",
+    )
+    source = models.CharField(
+        max_length=10,
+        choices=Source.choices,
+        default=Source.AI,
+        help_text="Indicates whether this meditation was generated by AI or written by a person.",
+    )
+    status = models.CharField(
+        max_length=10,
+        choices=Status.choices,
+        default=Status.DRAFT,
+        help_text="Approval status. Only approved meditations should be shown publicly.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="created_meditations",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="approved_meditations",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    approved_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp when this meditation was approved.",
+    )
+
+    class Meta:
+        ordering = ("day", "language_code", "-created_at")
+        verbose_name = "Gospel meditation"
+        verbose_name_plural = "Gospel meditations"
+        constraints = [
+            models.UniqueConstraint(
+                fields=("day", "language_code"),
+                condition=models.Q(status="approved"),
+                name="unique_approved_meditation_per_day_language",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return (
+            f"Meditation for {self.day.date.isoformat()} "
+            f"[{self.language_code}] - {self.get_status_display()}"
+        )
