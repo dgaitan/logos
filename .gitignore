@@ -271,3 +271,4 @@ dump.rdb
 logos/media/
 
 .pytest_cache/
+.env
